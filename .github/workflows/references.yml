@@ -1,0 +1,15 @@
+name: Acquire MES-432 references
+on:
+  push:
+    paths: ['Reference/fetch_references.py','.github/workflows/references.yml']
+  workflow_dispatch:
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python Reference/fetch_references.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MES432-reference-evidence
+          path: reference-downloads/
