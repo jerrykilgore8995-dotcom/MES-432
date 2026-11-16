@@ -19,12 +19,20 @@ public:
  int v(String s){return int(p.getRawParameterValue(s)->load());}
  void prepareToPlay(double s,int)override{sr=s;for(auto& ch:states)for(auto& f:ch)f.reset();}void releaseResources()override{}
  void processBlock(AudioBuffer<float>& buf,MidiBuffer&)override{ScopedNoDenormals nd;for(int c=0;c<buf.getNumChannels();++c){if(!v("in"+String(c))){for(auto& f:states[c])f.reset();continue;}bool active[5]{};bool any=false;for(int b=0;b<5;++b){auto& f=states[c][b];double g=gains[v(id(c,b,0))];if(g==0){f.reset();continue;}any=active[b]=true;double A=std::pow(10.,g/20.)-1.;
- if(b==0||b==4){double fc=b==0?(g>0?104.922:107.916)*(v(id(c,b,1))?2:1):(g>0?4099.321:3805.346);double k=std::tan(MathConstants<double>::pi*fc/sr);f.a1=(k-1)/(k+1);f.a2=f.b2=0;f.b0=A*(b==0?k:1)/(1+k);f.b1=b==0?f.b0:-f.b0;}
- else{double fc=freqs[b-1][v(id(c,b,1))];int shape=v(id(c,b,2));double slope=std::log(q6[shape]/q1[shape])/5;double q=q1[shape]*std::exp(slope*(std::abs(g)-1)); // measured boost anchors; cuts extrapolated
- // Matched analog bandpass using bilinear mapping plus above-Nyquist fallback.
- double k=fc<sr*.45?std::tan(MathConstants<double>::pi*fc/sr):2*MathConstants<double>::pi*fc/(2*sr);
- // convert measured half-gain Q to parallel bandpass pole Q
- q*=std::pow(10.,g/40.);double norm=1/(1+k/q+k*k);f.b0=A*k/q*norm;f.b1=0;f.b2=-f.b0;f.a1=2*(k*k-1)*norm;f.a2=(1-k/q+k*k)*norm;}
+ if(b==0||b==4){double fc=b==0?(g>0?104.922:107.916)*(v(id(c,b,1))?2:1):(g>0?4099.321:3805.346);
+ double trim=b==0?(g>0?.96276648:1.02533953):(g>0?.926376903:.948855989);
+ A=std::pow(10.,g*trim/20.)-1.;double k=std::tan(MathConstants<double>::pi*fc/sr);f.a1=(k-1)/(k+1);f.a2=f.b2=0;f.b0=A*(b==0?k:1)/(1+k);f.b1=b==0?f.b0:-f.b0;}
+ else{double fc=freqs[b-1][v(id(c,b,1))];int shape=v(id(c,b,2));double slope=std::log(q6[shape]/q1[shape])/5;double q=q1[shape]*std::exp(slope*(std::abs(g)-1))*std::pow(10.,g/40.);
+ // Positive-gain measured +10 dB anchors; interpolate from +6, do not treat negative curves as measured.
+ double t=g>0?jlimit(0.,1.,(g-6.)/4.):0.;
+ const double fScale[]={1.02980866,1.0184,1.03},gainScale[]={.968157889,.922202206,.851058138};
+ const int anchorShape[]={4,2,0};const double anchorQ[]={4.31620816,1.8728784,.37862756};
+ double qAt10=q1[shape]*std::exp(std::log(q6[shape]/q1[shape])/5*9)*std::pow(10.,10./40.);
+ if(shape==anchorShape[b-1])q*=std::pow(anchorQ[b-1]/qAt10,t);
+ fc*=std::pow(fScale[b-1],t);A=std::pow(10.,g*std::pow(gainScale[b-1],t)/20.)-1.;
+ // Continuous prewarp extension avoids discontinuous response at 0.45 Fs.
+ double u=fc/sr;double k=u<=.45?std::tan(MathConstants<double>::pi*u):std::tan(MathConstants<double>::pi*.45)+(u-.45)*MathConstants<double>::pi/std::pow(std::cos(MathConstants<double>::pi*.45),2);
+ double norm=1/(1+k/q+k*k);f.b0=A*k/q*norm;f.b1=0;f.b2=-f.b0;f.a1=2*(k*k-1)*norm;f.a2=(1-k/q+k*k)*norm;}
  }if(!any)continue;auto* x=buf.getWritePointer(c);for(int i=0;i<buf.getNumSamples();++i){double dry=x[i],y=dry;for(int b=0;b<5;++b)if(active[b])y+=states[c][b].run(dry);x[i]=float(y);}}}
  void getStateInformation(MemoryBlock& b)override{auto xml=p.copyState().createXml();copyXmlToBinary(*xml,b);}void setStateInformation(const void* d,int n)override{if(auto xml=getXmlFromBinary(d,n))if(xml->hasTagName(p.state.getType()))p.replaceState(ValueTree::fromXml(*xml));}
  bool hasEditor()const override{return true;}AudioProcessorEditor* createEditor()override;
