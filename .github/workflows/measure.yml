@@ -1,0 +1,22 @@
+name: Measure MES-432 VST3
+on:
+  push:
+    paths: ['.github/workflows/measure.yml','Tools/**','Source/**']
+  workflow_dispatch:
+jobs:
+  measure:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -A x64
+      - run: cmake --build build --config Release --target MES432_VST3 MESMeasure --parallel 4
+      - shell: pwsh
+        run: |
+          $plugin = (Resolve-Path "build/MES432_artefacts/Release/VST3/MES-432.vst3").Path
+          & "build/MESMeasure_artefacts/Release/MESMeasure.exe" $plugin "responses.bin"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MES432-impulse-responses
+          path: responses.bin
+          if-no-files-found: error
