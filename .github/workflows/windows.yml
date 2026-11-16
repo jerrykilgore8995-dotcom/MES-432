@@ -15,3 +15,19 @@ jobs:
           name: MES-432-Windows-x64-VST3
           path: build/MES432_artefacts/Release/VST3/
           if-no-files-found: error
+      - name: Build native capture host
+        run: cmake --build build --config Release --target MESCapture --parallel 4
+      - name: Capture both actual editor layouts
+        shell: pwsh
+        run: |
+          $plugin = (Resolve-Path "build/MES432_artefacts/Release/VST3/MES-432.vst3").Path
+          $hostExe = "build/MESCapture_artefacts/Release/MESCapture.exe"
+          & $hostExe $plugin mono "MES432-mono.png"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $hostExe $plugin stereo "MES432-stereo.png"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MES432-actual-GUI
+          path: MES432-*.png
+          if-no-files-found: error
