@@ -48,14 +48,60 @@ public:
  void getStateInformation(MemoryBlock& b)override{auto xml=p.copyState().createXml();copyXmlToBinary(*xml,b);}void setStateInformation(const void* d,int n)override{if(auto xml=getXmlFromBinary(d,n))if(xml->hasTagName(p.state.getType()))p.replaceState(ValueTree::fromXml(*xml));}
  bool hasEditor()const override{return true;}AudioProcessorEditor* createEditor()override;
 };
-class Metal:public LookAndFeel_V4{public:Metal(){setColour(Slider::textBoxTextColourId,Colours::ivory);setColour(Slider::textBoxBackgroundColourId,Colour(0xff151515));setColour(Slider::textBoxOutlineColourId,Colour(0xff333333));}
- void drawRotarySlider(Graphics& g,int x,int y,int w,int h,float pos,float start,float end,Slider&)override{float cx=x+w*.5f,cy=y+h*.5f,r=jmin(w,h)*.34f;Rectangle<float> b(cx-r,cy-r,2*r,2*r);for(int i=0;i<=24;++i){float a=start+(end-start)*i/24;g.setColour(Colour(0xffe2d9c4));g.drawLine(cx+std::sin(a)*(r+5),cy-std::cos(a)*(r+5),cx+std::sin(a)*(r+9),cy-std::cos(a)*(r+9),1);}
- g.setColour(Colours::black);g.fillEllipse(b.translated(2,4).expanded(2));g.setColour(Colour(0xffa12619));g.fillEllipse(b.translated(0,3));g.setGradientFill(ColourGradient(Colour(0xffe5e1d8),cx-r,cy-r,Colour(0xff555650),cx+r,cy+r,false));g.fillEllipse(b);for(int i=0;i<24;++i){float a=i*MathConstants<float>::twoPi/24;g.setColour(Colour(0xff65635d));g.drawLine(cx+std::sin(a)*(r-1),cy-std::cos(a)*(r-1),cx+std::sin(a)*(r-5),cy-std::cos(a)*(r-5),2);}g.setGradientFill(ColourGradient(Colour(0xff303030),cx-r,cy-r,Colour(0xff080808),cx+r,cy+r,false));g.fillEllipse(b.reduced(5));float a=start+pos*(end-start);g.setColour(Colours::ivory);g.drawLine(cx+std::sin(a)*r*.25f,cy-std::cos(a)*r*.25f,cx+std::sin(a)*r*.8f,cy-std::cos(a)*r*.8f,2.5f);}
+class Metal:public LookAndFeel_V4{
+public:
+ Metal(){setColour(ComboBox::backgroundColourId,Colour(0xff202020));setColour(ComboBox::textColourId,Colours::ivory);setColour(ComboBox::outlineColourId,Colour(0xff777777));}
+ void drawRotarySlider(Graphics& g,int x,int y,int w,int h,float pos,float start,float end,Slider& slider)override{
+ float cx=x+w*.5f,cy=y+h*.5f,r=jmin(w,h)*.265f;float angle=start+pos*(end-start);Rectangle<float> b(cx-r,cy-r,2*r,2*r);
+ int count=int(slider.getProperties().getWithDefault("ticks",24));StringArray marks;marks.addTokens(slider.getProperties().getWithDefault("marks","").toString(),"|","");
+ for(int j=0;j<count;++j){float a=start+(end-start)*j/float(jmax(1,count-1));float sx=std::sin(a),sy=-std::cos(a);g.setColour(Colour(0xffc6c4b9));g.drawLine(cx+sx*(r+3),cy+sy*(r+3),cx+sx*(r+8),cy+sy*(r+8),.8f);
+ if(j<marks.size()){float rr=r+15;g.setFont(count>10?8.f:10.f);g.drawText(marks[j],int(cx+sx*rr-19),int(cy+sy*rr-6),38,12,Justification::centred);}}
+ g.setColour(Colours::black.withAlpha(.85f));g.fillEllipse(b.translated(2,4).expanded(3));g.setColour(Colour(0xffa52c20));g.fillEllipse(b.translated(0,3).expanded(1));
+ Path wedge;wedge.startNewSubPath(cx+std::sin(angle)*(r+7),cy-std::cos(angle)*(r+7));wedge.lineTo(cx+std::sin(angle-.14f)*r,cy-std::cos(angle-.14f)*r);wedge.lineTo(cx+std::sin(angle+.14f)*r,cy-std::cos(angle+.14f)*r);wedge.closeSubPath();g.fillPath(wedge);
+ Path fluted;for(int j=0;j<144;++j){float a=j*MathConstants<float>::twoPi/144;float rr=r*(.96f+.04f*std::cos(24*a));float xx=cx+rr*std::sin(a),yy=cy-rr*std::cos(a);if(j==0)fluted.startNewSubPath(xx,yy);else fluted.lineTo(xx,yy);}fluted.closeSubPath();
+ ColourGradient silver(Colour(0xfff2eee1),cx-r,cy-r,Colour(0xff55534e),cx+r,cy+r,false);silver.addColour(.35,Colour(0xffaaa69a));silver.addColour(.58,Colour(0xffe3dfd0));g.setGradientFill(silver);g.fillPath(fluted);
+ for(int j=0;j<24;++j){float a=j*MathConstants<float>::twoPi/24;g.setColour(Colour(0xff4f4b42).withAlpha(.7f));g.drawLine(cx+std::sin(a)*(r-1),cy-std::cos(a)*(r-1),cx+std::sin(a)*(r-5),cy-std::cos(a)*(r-5),1.5f);}
+ auto cap=b.reduced(4);g.setColour(Colour(0xffa8a59b));g.fillEllipse(cap.expanded(.6f));g.setGradientFill(ColourGradient(Colour(0xff222325),cx-r,cy-r,Colour(0xff030405),cx+r,cy+r,false));g.fillEllipse(cap);
+ g.setColour(Colour(0xfff5f1df));g.drawLine(cx+std::sin(angle)*r*.10f,cy-std::cos(angle)*r*.10f,cx+std::sin(angle)*r*.81f,cy-std::cos(angle)*r*.81f,2.1f);
+ }
+ void drawToggleButton(Graphics& g,ToggleButton& t,bool,bool)override{auto r=t.getLocalBounds().toFloat();float x=r.getX()+r.getWidth()*.5f,y=r.getY()+12;bool on=t.getToggleState();
+ g.setColour(Colour(0xff111211));g.fillEllipse(x-8,y-8,16,16);g.setGradientFill(ColourGradient(Colour(0xffdedaca),x-7,y-7,Colour(0xff55534d),x+7,y+7,false));g.fillEllipse(x-6,y-6,12,12);g.setColour(Colour(0xff25251f));g.fillEllipse(x-4,y-4,8,8);float yy=y+(on?-7:7);g.setColour(Colour(0xff99998e));g.drawLine(x,y,x,yy,5);g.setColour(Colour(0xffe8e5d6));g.fillEllipse(x-3,yy-3,6,6);g.setColour(Colours::ivory);g.setFont(9.f);g.drawText(t.getButtonText(),0,22,t.getWidth(),13,Justification::centred);}
 };
-class Editor:public AudioProcessorEditor{Engine& e;Metal look;ComboBox color;std::unique_ptr<AP::ComboBoxAttachment> ca;std::vector<std::unique_ptr<Slider>> knobs;std::vector<std::unique_ptr<Label>> labels;std::vector<std::unique_ptr<ToggleButton>> switches;std::vector<std::unique_ptr<AP::SliderAttachment>> sa;std::vector<std::unique_ptr<AP::ButtonAttachment>> ba;
- void knob(String name,String caption,int x,int y,int w,int h){auto z=std::make_unique<Slider>();z->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);z->setRotaryParameters(3.9f,8.65f,true);z->setTextBoxStyle(Slider::TextBoxBelow,false,w-12,18);z->setBounds(x,y,w,h);addAndMakeVisible(*z);sa.push_back(std::make_unique<AP::SliderAttachment>(e.p,name,*z));knobs.push_back(std::move(z));auto l=std::make_unique<Label>();l->setText(caption,dontSendNotification);l->setJustificationType(Justification::centred);l->setColour(Label::textColourId,Colours::ivory);l->setFont(Font(12.f,Font::bold));l->setBounds(x,y-14,w,15);addAndMakeVisible(*l);labels.push_back(std::move(l));}
-public:Editor(Engine& a):AudioProcessorEditor(a),e(a){setLookAndFeel(&look);setOpaque(true);setSize(1280,480);color.addItemList(StringArray{"Digital","Tube PP","Tube SE","Transistor PP","IC"},1);color.setBounds(1010,15,218,27);addAndMakeVisible(color);ca=std::make_unique<AP::ComboBoxAttachment>(e.p,"color",color);for(int c=0;c<2;++c){int base=c*610+45;auto t=std::make_unique<ToggleButton>("EQ IN");t->setColour(ToggleButton::textColourId,Colours::ivory);t->setBounds(base+20,410,100,30);addAndMakeVisible(*t);ba.push_back(std::make_unique<AP::ButtonAttachment>(e.p,"in"+String(c),*t));switches.push_back(std::move(t));for(int b=0;b<5;++b){int x=base+b*117;knob(id(c,b,0),"LEVEL dB",x,103,108,94);if(b!=4)knob(id(c,b,1),"FREQUENCY Hz",x,224,108,94);if(b>0&&b<4)knob(id(c,b,2),"SHAPE",x,342,108,79);}}}~Editor()override{setLookAndFeel(nullptr);}
- void paint(Graphics& g)override{g.fillAll(Colour(0xff171717));g.setGradientFill(ColourGradient(Colour(0xff33322e),0,0,Colour(0xff131313),0,480,false));g.fillRect(30,4,1220,472);g.setColour(Colour(0xff79756a));g.drawRect(30,4,1220,472,1);for(int x:{8,1250})for(int y:{16,451}){g.setColour(Colours::black);g.fillRoundedRectangle(float(x),float(y),22,12,5);g.setColour(Colour(0xff77736b));g.drawRoundedRectangle(float(x),float(y),22,12,5,1);}g.setColour(Colours::ivory);g.setFont(Font(26.f,Font::bold));g.drawText("MES-432",45,12,220,35,Justification::centredLeft);g.setFont(14.f);g.drawText("MASTERING PARAMETRIC EQUALIZER",360,15,560,30,Justification::centred);StringArray bands{"LOW SHELF","LOW","MID","HIGH","HIGH SHELF"};for(int c=0;c<2;++c){int base=c*610+45;g.setFont(Font(16.f,Font::bold));g.drawText(c?"RIGHT":"LEFT",base,48,575,24,Justification::centred);for(int b=0;b<5;++b){int x=base+b*117;g.setColour(Colour(0xffc0b6a0));g.setFont(Font(12.f,Font::bold));g.drawText(bands[b],x,75,108,16,Justification::centred);if(b>0)g.drawVerticalLine(x-5,74,415);}g.setColour(Colour(0xff827b6b));g.drawHorizontalLine(438,float(base),float(base+575));}g.drawVerticalLine(640,48,450);g.setColour(Colours::ivory);g.setFont(12.f);g.drawText("PRECISION DIGITAL EQUALIZER",440,447,400,22,Justification::centred);}
+class Editor:public AudioProcessorEditor,private Timer{
+ Engine& e;Metal look;ComboBox color;std::unique_ptr<AP::ComboBoxAttachment> ca;
+ std::vector<std::unique_ptr<Slider>> knobs;
+ std::vector<std::unique_ptr<ToggleButton>> switches;
+ std::vector<std::unique_ptr<AP::SliderAttachment>> sa;
+ std::vector<std::unique_ptr<AP::ButtonAttachment>> ba;
+ int channels=0;int panelWidth=0;static constexpr int height=350;
+ void knob(String name,int cx,int cy,int size,int ticks,String marks){auto z=std::make_unique<Slider>();z->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);z->setRotaryParameters(3.6651914f,8.9011792f,true);z->setTextBoxStyle(Slider::NoTextBox,false,0,0);z->getProperties().set("ticks",ticks);z->getProperties().set("marks",marks);z->setBounds(cx-size/2,cy-size/2,size,size);z->setTooltip(e.p.getParameter(name)->getName(100));addAndMakeVisible(*z);sa.push_back(std::make_unique<AP::SliderAttachment>(e.p,name,*z));knobs.push_back(std::move(z));}
+ String gainMarks(){StringArray a;for(int j=0;j<25;++j)a.add(j%2==0||j==12?String(gains[j],gains[j]==int(gains[j])?0:1):" ");return a.joinIntoString("|");}
+ String freqMarks(int b){StringArray a;for(int j=0;j<24;++j){double f=freqs[b-1][j];a.add(j%2==0||j==23?(f>=1000?String(f/1000, f==int(f/1000)*1000?0:1)+"k":String(f,0)):" ");}return a.joinIntoString("|");}
+ void makeSwitch(int c,int x,int y){auto t=std::make_unique<ToggleButton>("EQ IN");t->setBounds(x-24,y,48,36);addAndMakeVisible(*t);ba.push_back(std::make_unique<AP::ButtonAttachment>(e.p,"in"+String(c),*t));switches.push_back(std::move(t));}
+ int shelfX(int c)const{return c?679:105;}int bellX(int c,int b)const{return (c?773:199)+(b-1)*105;}
+ void rebuild(){int n=e.getTotalNumInputChannels()==1?1:2;if(n==channels)return;channels=n;sa.clear();ba.clear();knobs.clear();switches.clear();panelWidth=n==1?580:1070;setSize(panelWidth,height);
+ color.setBounds(panelWidth-162,4,149,24);
+ for(int c=0;c<n;++c){int sx=shelfX(c);knob(id(c,4,0),sx,157,104,25,gainMarks());knob(id(c,0,0),sx,275,104,25,gainMarks());
+ auto t=std::make_unique<ToggleButton>("50 / 100 Hz");t->setBounds(sx-40,208,80,36);auto* ptr=t.get();auto param=id(c,0,1);t->setToggleState(e.v(param)!=0,dontSendNotification);t->onClick=[this,ptr,param]{auto* p=e.p.getParameter(param);p->beginChangeGesture();p->setValueNotifyingHost(ptr->getToggleState()?1.f:0.f);p->endChangeGesture();};t->getProperties().set("shelfChannel",c);addAndMakeVisible(*t);switches.push_back(std::move(t));
+ for(int b=1;b<=3;++b){int x=bellX(c,b);knob(id(c,b,2),x,81,92,5,"5|6|9|11|15");knob(id(c,b,1),x,179,112,24,freqMarks(b));knob(id(c,b,0),x,278,104,25,gainMarks());}
+ makeSwitch(c,n==1?520:(c?555:495),47);
+ }repaint();}
+ void timerCallback()override{rebuild();for(auto& t:switches)if(t->getProperties().contains("shelfChannel"))t->setToggleState(e.v(id(int(t->getProperties()["shelfChannel"]),0,1))!=0,dontSendNotification);repaint();}
+public:
+ Editor(Engine& a):AudioProcessorEditor(a),e(a){setLookAndFeel(&look);setOpaque(true);color.addItemList(StringArray{"Digital","Tube PP","Tube SE","Transistor PP","IC"},1);addAndMakeVisible(color);ca=std::make_unique<AP::ComboBoxAttachment>(e.p,"color",color);rebuild();startTimerHz(5);}
+ ~Editor()override{stopTimer();setLookAndFeel(nullptr);}
+ void paint(Graphics& g)override{
+ g.fillAll(Colour(0xff151616));g.setGradientFill(ColourGradient(Colour(0xff383939),0,30,Colour(0xff242525),0,350,false));g.fillRect(0,30,getWidth(),height-30);
+ g.setColour(Colour(0xff0c0d0d));g.fillRect(0,0,getWidth(),30);g.setColour(Colour(0xffddd9ca));g.setFont(12.f);g.drawText("OUTPUT COLOR",getWidth()-260,4,94,24,Justification::centredRight);
+ for(int x:{8,getWidth()-27})for(int y:{64,300}){g.setColour(Colour(0xff080909));g.fillRoundedRectangle(float(x),float(y),19,9,4);g.setColour(Colour(0xff8b8980));g.drawRoundedRectangle(float(x),float(y),19,9,4,.8f);}
+ auto line=[&](int x){g.setColour(Colour(0xffa4a296));g.drawVerticalLine(x,46,321);g.setColour(Colour(0xff77786f));g.drawVerticalLine(x+2,46,321);};
+ auto txt=[&](String t,int x,int y,int w,int h,float size){g.setColour(Colour(0xffe0ddd0));g.setFont(size);g.drawText(t,x,y,w,h,Justification::centred);};
+ for(int c=0;c<channels;++c){int sx=shelfX(c);line(sx-52);line(sx+52);txt("SHELVING",sx-50,98,100,14,10);txt("HI",sx-54,112,25,12,9);txt("LO",sx-54,238,25,12,9);
+ for(int b=1;b<=3;++b){int x=bellX(c,b);if(b>1)line(x-52);txt(b==1?"LO":b==2?"MID":"HI",x-45,125,90,13,11);txt("Hz",x-42,222,84,12,9);}
+ line(bellX(c,3)+52);int led=channels==1?520:(c?555:495);g.setColour(Colour(0xff141514));g.fillEllipse(float(led-6),34,12,12);g.setGradientFill(ColourGradient(e.v("in"+String(c))?Colour(0xffd6ffb1):Colour(0xff343b30),float(led-4),36,e.v("in"+String(c))?Colour(0xff3c9d25):Colour(0xff1b211a),float(led+4),44,false));g.fillEllipse(float(led-4),36,8,8);txt(c?"RIGHT":"LEFT",led-28,84,56,16,10);
+ }
+ txt("PARAMETRIC MASTERING EQUALIZER",48,325,channels==1?330:430,18,12);txt("MES-432",getWidth()-134,325,100,18,13);
+ }
 };
 AudioProcessorEditor* Engine::createEditor(){return new Editor(*this);}
 AudioProcessor* JUCE_CALLTYPE createPluginFilter(){return new Engine();}
