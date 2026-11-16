@@ -71,34 +71,35 @@ class Editor:public AudioProcessorEditor,private Timer{
  Engine& e;Metal look;ComboBox color;std::unique_ptr<AP::ComboBoxAttachment> ca;
  std::vector<std::unique_ptr<Slider>> knobs;
  std::vector<std::unique_ptr<ToggleButton>> switches;
+ std::vector<std::unique_ptr<TextButton>> eqButtons;
  std::vector<std::unique_ptr<AP::SliderAttachment>> sa;
  std::vector<std::unique_ptr<AP::ButtonAttachment>> ba;
- int channels=0;int panelWidth=0;static constexpr int height=350;
+ int channels=0;int panelWidth=0;static constexpr int faceHeight=350;static constexpr int height=390;
  void knob(String name,int cx,int cy,int size,int ticks,String marks){auto z=std::make_unique<Slider>();z->setSliderStyle(Slider::RotaryHorizontalVerticalDrag);z->setRotaryParameters(3.6651914f,8.9011792f,true);z->setTextBoxStyle(Slider::NoTextBox,false,0,0);z->getProperties().set("ticks",ticks);z->getProperties().set("marks",marks);z->setBounds(cx-size/2,cy-size/2,size,size);z->setTooltip(e.p.getParameter(name)->getName(100));addAndMakeVisible(*z);sa.push_back(std::make_unique<AP::SliderAttachment>(e.p,name,*z));knobs.push_back(std::move(z));}
  String gainMarks(){StringArray a;for(int j=0;j<25;++j)a.add(j%2==0||j==12?String(gains[j],gains[j]==int(gains[j])?0:1):" ");return a.joinIntoString("|");}
  String freqMarks(int b){StringArray a;for(int j=0;j<24;++j){double f=freqs[b-1][j];a.add(j%2==0||j==23?(f>=1000?String(f/1000, f==int(f/1000)*1000?0:1)+"k":String(f,0)):" ");}return a.joinIntoString("|");}
- void makeSwitch(int c,int x,int y){auto t=std::make_unique<ToggleButton>("EQ IN");t->setBounds(x-24,y,48,36);addAndMakeVisible(*t);ba.push_back(std::make_unique<AP::ButtonAttachment>(e.p,"in"+String(c),*t));switches.push_back(std::move(t));}
+ void makeSwitch(int c,int x,int y){auto t=std::make_unique<TextButton>(c?"EQ RIGHT IN":"EQ LEFT IN");t->setClickingTogglesState(true);t->setColour(TextButton::buttonColourId,Colour(0xff292929));t->setColour(TextButton::buttonOnColourId,Colour(0xff31543c));t->setColour(TextButton::textColourOffId,Colour(0xffb0b0ac));t->setColour(TextButton::textColourOnId,Colour(0xffe2f0df));t->setBounds(x-63,y,126,26);addAndMakeVisible(*t);ba.push_back(std::make_unique<AP::ButtonAttachment>(e.p,"in"+String(c),*t));eqButtons.push_back(std::move(t));}
  int shelfX(int c)const{return c?679:105;}int bellX(int c,int b)const{return (c?773:199)+(b-1)*105;}
- void rebuild(){int n=e.getTotalNumInputChannels()==1?1:2;if(n==channels)return;channels=n;sa.clear();ba.clear();knobs.clear();switches.clear();panelWidth=n==1?580:1070;setSize(panelWidth,height);
+ void rebuild(){int n=e.getTotalNumInputChannels()==1?1:2;if(n==channels)return;channels=n;sa.clear();ba.clear();knobs.clear();switches.clear();eqButtons.clear();panelWidth=n==1?580:1070;setSize(panelWidth,height);
  color.setBounds(panelWidth-162,4,149,24);
  for(int c=0;c<n;++c){int sx=shelfX(c);knob(id(c,4,0),sx,157,104,25,gainMarks());knob(id(c,0,0),sx,275,104,25,gainMarks());
  auto t=std::make_unique<ToggleButton>("50 / 100 Hz");t->setBounds(sx-40,208,80,36);auto* ptr=t.get();auto param=id(c,0,1);t->setToggleState(e.v(param)!=0,dontSendNotification);t->onClick=[this,ptr,param]{auto* p=e.p.getParameter(param);p->beginChangeGesture();p->setValueNotifyingHost(ptr->getToggleState()?1.f:0.f);p->endChangeGesture();};t->getProperties().set("shelfChannel",c);addAndMakeVisible(*t);switches.push_back(std::move(t));
  for(int b=1;b<=3;++b){int x=bellX(c,b);knob(id(c,b,2),x,81,92,5,"5|6|9|11|15");knob(id(c,b,1),x,179,112,24,freqMarks(b));knob(id(c,b,0),x,278,104,25,gainMarks());}
- makeSwitch(c,n==1?520:(c?555:495),47);
+ makeSwitch(c,n==1?panelWidth/2:(c?panelWidth/2+71:panelWidth/2-71),357);
  }repaint();}
  void timerCallback()override{rebuild();for(auto& t:switches)if(t->getProperties().contains("shelfChannel"))t->setToggleState(e.v(id(int(t->getProperties()["shelfChannel"]),0,1))!=0,dontSendNotification);repaint();}
 public:
  Editor(Engine& a):AudioProcessorEditor(a),e(a){setLookAndFeel(&look);setOpaque(true);color.addItemList(StringArray{"Digital","Tube PP","Tube SE","Transistor PP","IC"},1);addAndMakeVisible(color);ca=std::make_unique<AP::ComboBoxAttachment>(e.p,"color",color);rebuild();startTimerHz(5);}
  ~Editor()override{stopTimer();setLookAndFeel(nullptr);}
  void paint(Graphics& g)override{
- g.fillAll(Colour(0xff151616));g.setGradientFill(ColourGradient(Colour(0xff383939),0,30,Colour(0xff242525),0,350,false));g.fillRect(0,30,getWidth(),height-30);
+ g.fillAll(Colour(0xff151616));g.setGradientFill(ColourGradient(Colour(0xff383939),0,30,Colour(0xff242525),0,350,false));g.fillRect(0,30,getWidth(),faceHeight-30);g.setColour(Colour(0xff080909));g.fillRect(0,faceHeight,getWidth(),height-faceHeight);g.setColour(Colour(0xff555650));g.drawHorizontalLine(faceHeight,0,float(getWidth()));
  g.setColour(Colour(0xff0c0d0d));g.fillRect(0,0,getWidth(),30);g.setColour(Colour(0xffddd9ca));g.setFont(12.f);g.drawText("OUTPUT COLOR",getWidth()-260,4,94,24,Justification::centredRight);
  for(int x:{8,getWidth()-27})for(int y:{64,300}){g.setColour(Colour(0xff080909));g.fillRoundedRectangle(float(x),float(y),19,9,4);g.setColour(Colour(0xff8b8980));g.drawRoundedRectangle(float(x),float(y),19,9,4,.8f);}
  auto line=[&](int x){g.setColour(Colour(0xffa4a296));g.drawVerticalLine(x,46,321);g.setColour(Colour(0xff77786f));g.drawVerticalLine(x+2,46,321);};
  auto txt=[&](String t,int x,int y,int w,int h,float size){g.setColour(Colour(0xffe0ddd0));g.setFont(size);g.drawText(t,x,y,w,h,Justification::centred);};
  for(int c=0;c<channels;++c){int sx=shelfX(c);line(sx-52);line(sx+52);txt("SHELVING",sx-50,98,100,14,10);txt("HI",sx-54,112,25,12,9);txt("LO",sx-54,238,25,12,9);
  for(int b=1;b<=3;++b){int x=bellX(c,b);if(b>1)line(x-52);txt(b==1?"LO":b==2?"MID":"HI",x-45,125,90,13,11);txt("Hz",x-42,222,84,12,9);}
- line(bellX(c,3)+52);int led=channels==1?520:(c?555:495);g.setColour(Colour(0xff141514));g.fillEllipse(float(led-6),34,12,12);g.setGradientFill(ColourGradient(e.v("in"+String(c))?Colour(0xffd6ffb1):Colour(0xff343b30),float(led-4),36,e.v("in"+String(c))?Colour(0xff3c9d25):Colour(0xff1b211a),float(led+4),44,false));g.fillEllipse(float(led-4),36,8,8);txt(c?"RIGHT":"LEFT",led-28,84,56,16,10);
+ line(bellX(c,3)+52);int loc=channels==1?520:(c?555:495);txt(c?"RIGHT":"LEFT",loc-28,84,56,16,10);
  }
  txt("PARAMETRIC MASTERING EQUALIZER",48,325,channels==1?330:430,18,12);txt("MES-432",getWidth()-134,325,100,18,13);
  }
