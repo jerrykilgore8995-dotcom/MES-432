@@ -1,0 +1,5 @@
+plot,nominal_gain_db,pole_hz,fitted_gain_db,baseline_db,rms_residual_db
+article-image-002.png,1,104.9220527,0.96276648,-2.45749796,0.01418025
+article-image-004.png,-1,107.91641041,-1.02533953,-2.54450671,0.01808090
+article-image-006.png,1,4099.32098,0.926376903,-2.50485337,0.01991734
+article-image-008.png,-1,3805.34622,-0.948855989,-2.50191167,0.01717271
